@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tuyển Sinh AI FINAL</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --main:#a78bfa;
+  --main2:#7c3aed;
+}
+
+body{
+  margin:0;
+  font-family:'Segoe UI';
+  background:linear-gradient(135deg,#ede9fe,#c4b5fd);
+  color:#2e1065;
+}
+
+.container{max-width:1200px;margin:auto;padding:20px}
+.card{
+  background:rgba(255,255,255,0.8);
+  border-radius:20px;
+  padding:20px;
+  margin-bottom:20px;
+  box-shadow:0 10px 30px rgba(124,58,237,0.2);
+}
+
+h2{text-align:center}
+.row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+input,select{padding:10px;border-radius:10px;border:1px solid #ddd}
+button{
+  padding:10px 20px;
+  border:none;
+  border-radius:10px;
+  background:linear-gradient(135deg,var(--main),var(--main2));
+  color:white;
+  cursor:pointer;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:15px;
+}
+
+.box{
+  background:linear-gradient(135deg,#c4b5fd,#a78bfa);
+  padding:15px;
+  border-radius:12px;
+  text-align:center;
+}
+
+.badge{
+  background:#7c3aed;
+  color:white;
+  padding:4px 8px;
+  border-radius:8px;
+  margin-top:5px;
+  display:inline-block;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<div class="card">
+<h2>🎯 Chọn tổ hợp</h2>
+<select id="tohop"></select>
+<div id="inputs" class="row"></div>
+<button onclick="tinh()">Phân tích</button>
+<div id="kq"></div>
+</div>
+
+<div class="card">
+<h2>📊 Radar</h2>
+<canvas id="radar"></canvas>
+</div>
+
+<div class="card">
+<h2>📊 So sánh ngành</h2>
+<canvas id="bar"></canvas>
+</div>
+
+<div class="card">
+<h2>🎓 Gợi ý trường</h2>
+<div id="list" class="grid"></div>
+</div>
+
+<div class="card">
+<h2>🧠 AI ngành</h2>
+<button onclick="goiYNganhAI()">AI phân tích</button>
+<div id="quizResult" class="grid"></div>
+</div>
+
+</div>
+
+<script>
+
+const tohopMap={
+A00:["Toán","Lý","Hóa"],A01:["Toán","Lý","Anh"],B00:["Toán","Hóa","Sinh"],
+C00:["Văn","Sử","Địa"],D01:["Toán","Văn","Anh"],D07:["Toán","Hóa","Anh"],
+I01:["Toán","Anh","Tin"],X00:["Toán","GDCD","Anh"],X26:["Toán","Anh","Tin"]
+};
+
+Object.keys(tohopMap).sort().forEach(k=>{
+  tohop.innerHTML+=`<option>${k}</option>`;
+});
+
+function doiMon(){
+let m=tohopMap[tohop.value];
+inputs.innerHTML=m.map((x,i)=>`<input id='m${i}' placeholder='${x}'>`).join('');
+}
+doiMon();
+
+tohop.onchange=doiMon;
+
+const data=[
+{t:"Tôn Đức Thắng",n:"CNTT",d:26.5,khoi:["A00","A01","D01","I01"]},
+{t:"Bách Khoa",n:"AI",d:27.5,khoi:["A00"]},
+{t:"UEH",n:"Kinh tế",d:25.5,khoi:["D01"]}
+];
+
+let chart;
+
+function tinh(){
+let mons=tohopMap[tohop.value];
+let diem=[];let tong=0;
+
+for(let i=0;i<3;i++){
+let d=parseFloat(document.getElementById('m'+i).value)||0;
+diem.push(d);tong+=d;
+}
+
+kq.innerHTML="Điểm: "+tong;
+
+if(chart) chart.destroy();
+chart=new Chart(radar,{type:'radar',data:{labels:mons,datasets:[{data:diem}]}});
+
+new Chart(bar,{type:'bar',data:{labels:["CNTT","AI","Kinh tế"],datasets:[{data:[90,85,80]}]}});
+
+goiy(tong);
+}
+
+function goiy(diem){
+let html="";
+data.forEach(x=>{
+if(diem>=x.d-1 && x.khoi.includes(tohop.value)){
+html+=`<div class='box'>${x.t}<br>${x.n}<br>${x.d}<div class='badge'>Phù hợp</div></div>`;
+}
+});
+list.innerHTML=html;
+}
+
+// AI
+const nganhVector=[
+{ten:"CNTT",vec:[9,8,7,3,4,7,5]},
+{ten:"AI",vec:[9,9,7,4,3,7,5]},
+{ten:"Kinh tế",vec:[6,5,5,4,7,8,6]},
+{ten:"Thiết kế",vec:[4,3,3,3,7,6,10]}
+];
+
+function distance(a,b){
+return Math.sqrt(a.reduce((s,x,i)=>s+(x-b[i])**2,0));
+}
+
+function runQuiz(){
+let score=Array(7).fill(0);
+for(let i=0;i<10;i++){
+let v=parseInt(prompt("Câu "+(i+1)+" (0-5)"))||0;
+score[i%7]+=v;
+}
+return score;
+}
+
+function goiYNganhAI(){
+let user=runQuiz();
+let res=nganhVector.map(n=>({ten:n.ten,dist:distance(user,n.vec)}));
+res.sort((a,b)=>a.dist-b.dist);
+
+quizResult.innerHTML=res.slice(0,3).map(n=>
+`<div class='box'>${n.ten}<div class='badge'>AI chọn</div></div>`).join('');
+}
+
+</script>
+
+</body>
+</html>
